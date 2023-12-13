@@ -1,9 +1,13 @@
-<script setup lang="ts"></script>
+<script setup>
+import TableComponent from '@/components/TableComponent.vue'
+</script>
 
 <template>
   <div>
     <div>
-      <TitleComponent title="Cadastro de usuário" />
+      <TableComponent />
     </div>
   </div>
 </template>
+
+<!-- https://quasar.dev/vue-components/table#server-side-pagination-filter-and-sorting -->
