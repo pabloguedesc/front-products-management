@@ -7,6 +7,8 @@ export interface ICreateProductDto {
   category_id: string
 }
 
+export interface IUpdateProductDto extends ICreateProductDto {}
+
 export interface ICreateProductResponse extends ICreateProductDto {
   id: string
   updatedAt: Date

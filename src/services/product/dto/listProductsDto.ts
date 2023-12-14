@@ -4,6 +4,7 @@ export interface IDataToListProductDto {
   item: 'name' | 'description'
   filterValue: string
   take: number
+  page: number
 }
 
 interface IPaginationLink {
