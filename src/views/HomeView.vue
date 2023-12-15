@@ -1,79 +1,12 @@
 <template>
   <div>
     <div class="card">
-      <Toolbar class="mb-4">
-        <template #start>
-          <Button label="New" icon="pi pi-plus" severity="success" class="mr-2" @click="openNew" />
-          <!-- <Button
-            label="Delete"
-            icon="pi pi-trash"
-            severity="danger"
-            @click="confirmDeleteSelected"
-            :disabled="!selectedProducts || !selectedProducts.length"
-          /> -->
-        </template>
-      </Toolbar>
-
-      <DataTable
-        ref="dt"
-        :value="products.data"
-        v-model:selection="selectedProducts"
-        dataKey="id"
-        :paginator="true"
-        :total-records="products.to"
-        :rows="takeTable"
-        v-on:value-change="changeTable"
-        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-        :rowsPerPageOptions="[5, 10, 25]"
-        currentPageReportTemplate="{first} para {last} de {totalRecords}"
-      >
-        <Column selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>
-        <Column field="name" header="Nome" sortable style="min-width: 16rem"></Column>
-        <Column field="description" header="Descrição" sortable style="min-width: 10rem"></Column>
-        <Column field="price" header="Preço" sortable style="min-width: 8rem">
-          <template #body="slotProps">
-            {{ formatCurrency(slotProps.data.price) }}
-          </template>
-        </Column>
-        <Column
-          field="expiry_date"
-          header="Data de validade"
-          sortable
-          style="min-width: 10rem"
-        ></Column>
-        <Column field="category_id" header="Categoria" sortable style="min-width: 10rem"></Column>
-        <Column
-          field="created_at"
-          header="Data de criação"
-          sortable
-          style="min-width: 10rem"
-        ></Column>
-        <Column
-          field="updated_at"
-          header="Data da Última atualização"
-          sortable
-          style="min-width: 10rem"
-        ></Column>
-        <Column :exportable="false" style="min-width: 8rem">
-          <template #body="slotProps">
-            <Button
-              icon="pi pi-pencil"
-              style=""
-              outlined
-              rounded
-              class="mr-2"
-              @click="editProduct(slotProps.data)"
-            />
-            <Button
-              icon="pi pi-trash"
-              outlined
-              rounded
-              severity="danger"
-              @click="confirmDeleteProduct(slotProps.data)"
-            />
-          </template>
-        </Column>
-      </DataTable>
+      <TableComponent
+        @edit-product-emit="editProduct"
+        @delete-product-emit="confirmDeleteProduct"
+        @open-new-dialog-emit="openNew"
+        :products="products"
+      />
 
       <Dialog
         v-model:visible="productDialog"
@@ -97,14 +30,6 @@
         <div class="field">
           <label for="description">Descrição</label>
           <div>
-            <!-- <Textarea
-              id="description"
-              v-model="product.description"
-              required="true"
-              rows="3"
-              cols="20"
-              style="min-width: 100%; max-width: 100%; min-height: 2rem"
-            /> -->
             <InputText
               id="description"
               v-model.trim="product.description"
@@ -112,9 +37,9 @@
               autofocus
               :class="{ 'p-invalid': submitted && !product.description }"
             />
-            <small class="p-error" v-if="submitted && !product.description"
-              >Campo obrigatório.</small
-            >
+            <small class="p-error" v-if="submitted && !product.description">
+              Campo obrigatório.
+            </small>
           </div>
         </div>
 
@@ -134,9 +59,9 @@
           <div class="field">
             <label for="expiry_date">Data de Validade</label>
             <Calendar v-model="product.expiry_date" date-format="dd/mm/yy" />
-            <small class="p-error" v-if="submitted && !product.expiry_date"
-              >Campo obrigatório.</small
-            >
+            <small class="p-error" v-if="submitted && !product.expiry_date">
+              Campo obrigatório.
+            </small>
           </div>
         </div>
 
@@ -150,33 +75,43 @@
             placeholder="Selecione a Categoria"
             class="w-full md:w-14rem"
           />
-          <small class="p-error" v-if="submitted && !product.category_id"
-            >Seleção obrigatória.</small
-          >
+          <small class="p-error" v-if="submitted && !product.category_id">
+            Seleção obrigatória.
+          </small>
         </div>
 
         <div class="field">
           <label for="image">Imagem</label>
-          <InputText
-            id="image"
-            v-model.trim="product.image"
-            required="true"
-            autofocus
-            :class="{ 'p-invalid': submitted && !product.image }"
-          />
+
+          <div>
+            <Toast />
+            <FileUpload
+              name="image"
+              url="http://localhost:8000/api/product/upload-image"
+              @upload="onAdvancedUpload($event)"
+              :multiple="true"
+              accept="image/*"
+              :maxFileSize="1000000"
+            >
+              <template #empty>
+                <p>Arraste e solte os arquivos aqui para fazer upload.</p>
+              </template>
+            </FileUpload>
+          </div>
+
           <small class="p-error" v-if="submitted && !product.image">Campo obrigatório.</small>
         </div>
 
         <template #footer>
-          <Button label="Cancel" icon="pi pi-times" text @click="hideDialog" />
-          <Button label="Save" icon="pi pi-check" text @click="saveProduct" />
+          <Button label="Cancelar" icon="pi pi-times" text @click="hideDialog" />
+          <Button label="Registrar" icon="pi pi-check" text @click="saveProduct" />
         </template>
       </Dialog>
 
       <Dialog
         v-model:visible="deleteProductDialog"
         :style="{ width: '450px' }"
-        header="Confirm"
+        header="Confirme"
         :modal="true"
       >
         <div class="confirmation-content">
@@ -187,10 +122,11 @@
           >
         </div>
         <template #footer>
-          <Button label="No" icon="pi pi-times" text @click="deleteProductDialog = false" />
-          <Button label="Yes" icon="pi pi-check" text @click="removeProduct" />
+          <Button label="Não" icon="pi pi-times" text @click="deleteProductDialog = false" />
+          <Button label="Sim" icon="pi pi-check" text @click="removeProduct" />
         </template>
       </Dialog>
+
       <Toast />
     </div>
   </div>
@@ -198,20 +134,7 @@
 
 <script lang="ts" setup>
 import { ref, onMounted, computed } from 'vue'
-import {
-  listAllProducts,
-  saveNewProduct,
-  deleteProduct,
-  updateProduct
-} from '@/services/product/ProductService'
-import { listAllCategories } from '@/services/category/categoryServices'
-import { type ICategory } from '@/services/category/dto/categoryDto'
-import { type IPaginatedResponseDto } from '@/services/product/dto/listProductsDto'
-import { type IProduct } from '@/services/product/dto/productDto'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import Button from 'primevue/button'
-import Toolbar from 'primevue/toolbar'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
@@ -219,24 +142,41 @@ import Calendar from 'primevue/calendar'
 import Dropdown from 'primevue/dropdown'
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
+import { format } from 'date-fns'
+import {
+  listAllProducts,
+  saveNewProduct,
+  deleteProduct,
+  updateProduct
+} from '@/services/product/ProductService'
+
+import { listAllCategories } from '@/services/category/categoryServices'
+import { type ICategory } from '@/services/category/dto/categoryDto'
+import { type IPaginatedResponseDto } from '@/services/product/dto/listProductsDto'
+import { type IProduct } from '@/services/product/dto/productDto'
+import TableComponent from '@/components/TableComponent.vue'
+import FileUpload from 'primevue/fileupload'
+
 const toast = useToast()
 
-// function onChange(event: any) {
-//   takeTable.value = event?.rows
-//   fetchAll()
-// }
-
-const show = () => {
-  toast.add({ severity: 'info', summary: 'Info', detail: 'Message Content', life: 3000 })
+function formatDate(input: string | Date): string {
+  return format(new Date(input), 'dd/MM/yyyy')
 }
 
-const dateFormatter = (date: Date) => {
+function dateFormatterToApi(date: Date) {
   const year = date.getFullYear()
   const month = (date.getMonth() + 1).toString().padStart(2, '0')
   const day = date.getDate().toString().padStart(2, '0')
   return `${year}-${month}-${day}`
 }
 
+function showSuccessToast(message: string) {
+  toast.add({ severity: 'success', summary: 'Sucesso', detail: message, life: 3000 })
+}
+
+function showErrorToast(message: string) {
+  toast.add({ severity: 'error', summary: 'Erro', detail: message, life: 3000 })
+}
 const defaultPaginatedResponse: IPaginatedResponseDto = {
   current_page: 1,
   data: [],
@@ -262,21 +202,35 @@ const productDefaultData: IProduct = {
   image: '',
   name: '',
   price: 0,
-  updated_at: new Date()
+  updated_at: new Date(),
+  imageUrl: '',
+  category: {
+    id: '',
+    name: '',
+    created_at: new Date(),
+    updated_at: new Date()
+  }
 }
 
 const product = ref<IProduct>(productDefaultData)
 const products = ref<IPaginatedResponseDto>(defaultPaginatedResponse)
 const productDialog = ref(false)
-const selectedProducts = ref<IProduct[]>([])
+const deleteProductDialog = ref(false)
+const submitted = ref(false)
+const categories = ref<ICategory[]>([])
 
-const editProduct = (prod: any) => {
+function editProduct(prod: IProduct) {
   product.value = { ...prod }
   productDialog.value = true
 }
 
-const deleteProductDialog = ref(false)
-const confirmDeleteProduct = (prod: any) => {
+const onAdvancedUpload = (e: any) => {
+  const response = JSON.parse(e.xhr.response)
+
+  product.value.image = response.path
+}
+
+function confirmDeleteProduct(prod: IProduct) {
   product.value = prod
   deleteProductDialog.value = true
 }
@@ -284,25 +238,13 @@ const confirmDeleteProduct = (prod: any) => {
 async function removeProduct() {
   try {
     await deleteProduct(product.value.id)
-    show()
+    showSuccessToast('Produto removido com sucesso')
     fetchAll()
     deleteProductDialog.value = false
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao deletar produto:', error)
+    showErrorToast(error.response.data.error)
   }
-  // toast.add({ severity: 'success', summary: 'Successful', detail: 'Product Deleted', life: 3000 })
-}
-
-const submitted = ref(false)
-
-const categories = ref<ICategory[]>([])
-
-const takeTable = ref(5)
-const pageTable = ref(1)
-
-function changeTable(event: any) {
-  takeTable.value = event?.rows
-  fetchAll()
 }
 
 async function fetchAll() {
@@ -310,15 +252,23 @@ async function fetchAll() {
     const response = await listAllProducts({
       filterValue: '',
       item: 'name',
-      take: takeTable.value,
-      page: pageTable.value
+      take: 20,
+      page: 1
     })
+
+    response.data.data.forEach((prod) => {
+      prod.expiry_date = formatDate(prod.expiry_date)
+      prod.created_at = formatDate(prod.created_at)
+      prod.updated_at = formatDate(prod.updated_at)
+    })
+
     products.value = response.data
 
     const responseCategory = await listAllCategories()
     categories.value = responseCategory.data
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao obter produtos:', error)
+    showErrorToast(error.response.data.error)
   }
 }
 
@@ -326,26 +276,17 @@ onMounted(async () => {
   fetchAll()
 })
 
-const formatCurrency = (value: number) => {
-  if (value)
-    return value.toLocaleString('pt-Br', {
-      style: 'currency',
-      currency: 'BRL'
-    })
-  return
-}
-
 function clearProductFields() {
   product.value = { ...productDefaultData }
 }
 
-const openNew = () => {
+function openNew() {
   clearProductFields()
   submitted.value = false
   productDialog.value = true
 }
 
-const hideDialog = () => {
+function hideDialog() {
   clearProductFields()
   productDialog.value = false
   submitted.value = false
@@ -356,7 +297,7 @@ const isFormValid = computed(() => {
   return category_id && description && expiry_date && image && name && price !== null
 })
 
-const saveProduct = async () => {
+async function saveProduct() {
   submitted.value = true
 
   if (isFormValid.value) {
@@ -364,31 +305,34 @@ const saveProduct = async () => {
 
     try {
       if (product.value.id) {
-        // editing
         await updateProduct(product.value.id, {
           category_id,
           description,
-          expiry_date: dateFormatter(new Date(expiry_date)),
+          expiry_date: dateFormatterToApi(new Date(expiry_date)),
           image,
           name,
           price
         })
+        showSuccessToast('Produto atualizado com sucesso')
       } else {
         await saveNewProduct({
           category_id,
           description,
-          expiry_date: dateFormatter(new Date(expiry_date)),
+          expiry_date: dateFormatterToApi(new Date(expiry_date)),
           image,
           name,
           price
         })
+        showSuccessToast('Produto criado com sucesso')
       }
-      show()
       fetchAll()
       hideDialog()
-    } catch (error) {
-      console.error('Erro ao criar produto:', error)
+    } catch (error: any) {
+      console.error('Erro ao criar/atualizar produto:', error)
+      showErrorToast(error.response.data.error)
     }
+  } else {
+    showErrorToast('Por favor, preencha todos os campos obrigatórios')
   }
 }
 </script>
