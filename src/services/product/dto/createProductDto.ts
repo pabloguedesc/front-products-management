@@ -3,9 +3,11 @@ export interface ICreateProductDto {
   description: string
   price: number
   expiry_date: string
-  image: string
+  image: string | File
   category_id: string
 }
+
+export interface IUpdateProductDto extends ICreateProductDto {}
 
 export interface ICreateProductResponse extends ICreateProductDto {
   id: string
